@@ -10,6 +10,17 @@ class Pnt
   float y;
 };
 
+class Int2D
+{
+  Int2D(int x_, int y_)
+  {
+    x = x_;
+    y = y_;
+  }
+  int x;
+  int y;
+};
+
 class QTBoundary
 {
   QTBoundary(float xmin_, float xmax_, float ymin_, float ymax_)
@@ -352,7 +363,7 @@ class Quadtree
   
   
   
-  boolean touching(QTBoundary bd1, QTBoundary bd2)
+  private boolean touching(QTBoundary bd1, QTBoundary bd2)
   {
     if ( (bd1.xmin > bd2.xmax) ||
          (bd1.xmax < bd2.xmin) ||
@@ -378,7 +389,7 @@ class Quadtree
   }
   
   
-  ArrayList<Quadtree> getTouchingLeaves(Quadtree qt, Quadtree parent)
+  private ArrayList<Quadtree> getTouchingLeaves(Quadtree qt, Quadtree parent)
   {
     ArrayList<Quadtree> list = new ArrayList<Quadtree>();
     
@@ -452,7 +463,7 @@ class Quadtree
     return list;
   }
   
-  void addTouchingLeaves(Quadtree qt, Quadtree parent, ArrayList<Quadtree> nbrList)
+  private void addTouchingLeaves(Quadtree qt, Quadtree parent, ArrayList<Quadtree> nbrList)
   {
     ArrayList<Quadtree> nbrList_local = getTouchingLeaves(qt, parent);
     
@@ -462,7 +473,7 @@ class Quadtree
     }
   }
   
-  void iterateUp(Quadtree qt, Quadtree parent, ArrayList<Quadtree> nbrList)
+  private void iterateUp(Quadtree qt, Quadtree parent, ArrayList<Quadtree> nbrList)
   {
     addTouchingLeaves(qt, parent, nbrList);
     if (parent.parent != null)
@@ -471,7 +482,7 @@ class Quadtree
     }
   }
   
-  void mkNeighborList()
+  void mkNeighborList_old()
   {
     neighbors = new ArrayList<Quadtree>();
     if (parent == null)
@@ -479,5 +490,226 @@ class Quadtree
       return;
     }
     iterateUp(this, parent, neighbors);
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  private Int2D[][] mkNeighborLUT()
+  {
+    // first index quadrant, second index direction.
+    // Direction: R  L  D  U  RU  RD  LD  LU
+    //            0  1  2  3   4   5   6   7  
+    Int2D[][] lookuptable = new Int2D[4][8];
+    lookuptable[0][0] = new Int2D(1, -1);
+    lookuptable[1][0] = new Int2D(0, 0);
+    lookuptable[2][0] = new Int2D(3, -1);
+    lookuptable[3][0] = new Int2D(2, 0);
+    
+    lookuptable[0][1] = new Int2D(1, 1);
+    lookuptable[1][1] = new Int2D(0, -1);
+    lookuptable[2][1] = new Int2D(3, 1);
+    lookuptable[3][1] = new Int2D(2, -1);
+    
+    lookuptable[0][2] = new Int2D(2, -1);
+    lookuptable[1][2] = new Int2D(3, -1);
+    lookuptable[2][2] = new Int2D(0, 2);
+    lookuptable[3][2] = new Int2D(1, 2);
+    
+    lookuptable[0][3] = new Int2D(2, 3);
+    lookuptable[1][3] = new Int2D(3, 3);
+    lookuptable[2][3] = new Int2D(0, -1);
+    lookuptable[3][3] = new Int2D(1, -1);
+    
+    lookuptable[0][4] = new Int2D(3, 3);
+    lookuptable[1][4] = new Int2D(2, 4);
+    lookuptable[2][4] = new Int2D(1, -1);
+    lookuptable[3][4] = new Int2D(0, 0);
+    
+    lookuptable[0][5] = new Int2D(3, -1);
+    lookuptable[1][5] = new Int2D(2, 0);
+    lookuptable[2][5] = new Int2D(1, 2);
+    lookuptable[3][5] = new Int2D(0, 5);
+    
+    lookuptable[0][6] = new Int2D(3, 1);
+    lookuptable[1][6] = new Int2D(2, -1);
+    lookuptable[2][6] = new Int2D(1, 6);
+    lookuptable[3][6] = new Int2D(0, 2);
+    
+    lookuptable[0][7] = new Int2D(3, 7);
+    lookuptable[1][7] = new Int2D(2, 3);
+    lookuptable[2][7] = new Int2D(1, 1);
+    lookuptable[3][7] = new Int2D(0, -1);
+    
+    return lookuptable;
+  }
+  
+  String getDirectionStr(int dir)
+  {
+    switch (dir)
+    {
+    case 0:
+      return "Right";
+    case 1:
+      return "Left";
+    case 2:
+      return "Bottom";
+    case 3:
+      return "Top";
+    case 4:
+      return "Right top";
+    case 5:
+      return "Right bottom";
+    case 6:
+      return "Left bottom";
+    case 7:
+      return "Left top";
+    default:
+    return "Not a direction";
+    }
+  }
+  
+  private String getNeighborCode(int direction)
+  {
+    Int2D[][] lookuptable = mkNeighborLUT();
+    
+    int locCodeLen = locationCode.length();
+    char[] neighborLocCode = locationCode.toCharArray();
+    int direction_state = direction; // left
+    for (int level = locCodeLen-1; level >= 0; level--)
+    {
+      int quadrant_state = locationCode.charAt(level) - '0'; // 48 = ascii code for '0'
+      Int2D temp = lookuptable[quadrant_state][direction_state];
+      direction_state = temp.y;
+      neighborLocCode[level] = char(48 + temp.x);
+      if (direction_state == -1)
+      {
+        break;
+      }
+    }
+    return String.valueOf(neighborLocCode);
+  }
+  
+  private void addChildNeighbors(Quadtree neighbor, int direction)
+  {
+    if (!neighbor.subdivided)
+    {
+      neighbors.add(neighbor);
+    }
+    else
+    {
+        
+      switch (direction)
+      {
+      case 0:
+        // Right
+        addChildNeighbors(neighbor.topleft, direction);
+        addChildNeighbors(neighbor.botleft, direction);
+        break;
+      case 1:
+        // Left neighbor
+        addChildNeighbors(neighbor.topright, direction);
+        addChildNeighbors(neighbor.botright, direction);
+        break;
+      case 2:
+        // Bottom
+        addChildNeighbors(neighbor.topleft, direction);
+        addChildNeighbors(neighbor.topright, direction);
+        break;
+      case 3:
+        // Top
+        addChildNeighbors(neighbor.botright, direction);
+        addChildNeighbors(neighbor.botleft, direction);
+        break;
+      case 4:
+        // Right top
+        addChildNeighbors(neighbor.botleft, direction);
+        break;
+      case 5:
+        // Right bottom
+        addChildNeighbors(neighbor.topleft, direction);
+        break;
+      case 6:
+        // Left bottom
+        addChildNeighbors(neighbor.topright, direction);
+        break;
+      case 7:
+        // Left top
+        addChildNeighbors(neighbor.botright, direction);
+        break;
+      default:
+        break;
+      }
+    }
+  }
+  
+  void mkNeighborList(boolean wrapEdge)
+  {
+    neighbors = new ArrayList<Quadtree>();
+
+    // getting root node
+    Quadtree root = parent;
+    while (root.parent != null)
+    {
+      root = root.parent;
+    }
+    
+    // iterating over the 8 directions
+    for (int i = 0; i < 8; i++)
+    {
+      if (!wrapEdge)
+      {
+        // if the current direction wraps around edge, break the loop iteration.
+      }
+      String neighborCode = getNeighborCode(i);
+      // iterate down root node to neighbor
+      int neighborCodeLen = neighborCode.length();
+      Quadtree neighbor = root;
+      for (int j = 0; j < neighborCodeLen; j++)
+      {
+        if (neighbor.subdivided)
+        {
+          switch (neighborCode.charAt(j))
+          {
+          case '0':
+            neighbor = neighbor.topleft;
+            break;
+          case '1':
+            neighbor = neighbor.topright;
+            break;
+          case '2':
+            neighbor = neighbor.botleft;
+            break;
+          case '3':
+            neighbor = neighbor.botright;
+            break;
+          }
+        }
+        else
+        {
+          // If this code is reached, then the neighbor is not as deep as the target node.
+          neighbors.add(neighbor);
+          break;
+        }
+      }
+
+      // here, either need to add neighbor to the neghbor list, or its children if its subdivided depending on the direction.
+      addChildNeighbors(neighbor, i);
+    }
+    
+    //println("\nLocation code:", locationCode);
+    //println("Compute left (0) neighbor");
+    //println(getDirectionStr(0), "neighbor location code:", getNeighborCode(0));
   }
 };

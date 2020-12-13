@@ -25,7 +25,7 @@ void setup()
 void draw()
 {
   background(120);
-  if (frameCount % 120 == 0)
+  if (frameCount % 120000 == 0)
   {
     quadtree.show(true, 1);
     println("Total add cals:", quadtree.addCounter, "---------------------------------------");
@@ -86,7 +86,7 @@ void mousePressed()
     // get what node this point falls in
     Quadtree qt = quadtree.check(mouseX, mouseY);
     
-    qt.mkNeighborList();
+    qt.mkNeighborList(false);
 
     // plot it and its neightbors into list to be plottet
     // add it
